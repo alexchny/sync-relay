@@ -11,11 +11,13 @@ import (
 )
 
 type Syncer struct {
-	itemRepo ports.ItemRepository
-	txRepo   ports.TransactionRepository
-	plaid    ports.PlaidClient
-	lock     ports.DistributedLock
-	events   ports.EventPublisher
+	itemRepo      ports.ItemRepository
+	txRepo        ports.TransactionRepository
+	plaid         ports.PlaidClient
+	lock          ports.DistributedLock
+	publisher     ports.EventPublisher
+	globalLimiter ports.RateLimiter
+	itemLimiter   ports.RateLimiter
 }
 
 func NewSyncer(
@@ -23,14 +25,18 @@ func NewSyncer(
 	txRepo ports.TransactionRepository,
 	plaid ports.PlaidClient,
 	lock ports.DistributedLock,
-	events ports.EventPublisher,
+	publisher ports.EventPublisher,
+	globalLimiter ports.RateLimiter,
+	itemLimiter ports.RateLimiter,
 ) *Syncer {
 	return &Syncer{
-		itemRepo: itemRepo,
-		txRepo:   txRepo,
-		plaid:    plaid,
-		lock:     lock,
-		events:   events,
+		itemRepo:      itemRepo,
+		txRepo:        txRepo,
+		plaid:         plaid,
+		lock:          lock,
+		publisher:     publisher,
+		globalLimiter: globalLimiter,
+		itemLimiter:   itemLimiter,
 	}
 }
 
@@ -47,6 +53,17 @@ func (s *Syncer) SyncItem(ctx context.Context, itemID uuid.UUID) error {
 			_ = err
 		}
 	}()
+
+	// global rate limit
+	if err := s.globalLimiter.Wait(ctx, "plaid_client"); err != nil {
+		return fmt.Errorf("global rate limit error: %w", err)
+	}
+
+	// item rate limit
+	itemKey := fmt.Sprintf("plaid_item:%s", itemID)
+	if err := s.itemLimiter.Wait(ctx, itemKey); err != nil {
+		return fmt.Errorf("item rate limit error: %w", err)
+	}
 
 	// load item
 	item, err := s.itemRepo.GetByID(ctx, itemID)
@@ -108,7 +125,7 @@ func (s *Syncer) processSyncLoop(ctx context.Context, item *domain.Item) error {
 
 		// publish events
 		if batchSize > 0 || len(resp.Removed) > 0 {
-			if err := s.events.PublishSyncEvents(ctx, item.ID, resp.Added, resp.Modified, resp.Removed); err != nil {
+			if err := s.publisher.PublishSyncEvents(ctx, item.ID, resp.Added, resp.Modified, resp.Removed); err != nil {
 				// stop sync if failed event emits
 				return fmt.Errorf("failed to publish events: %w", err)
 			}

@@ -59,24 +59,27 @@ func main() {
 	}()
 	slog.Info("connected to redis")
 
-	// create infra adapters
 	lockAdapter := redis.NewLockAdapter(redisClient)
 	queueAdapter := redis.NewQueueAdapter(redisClient, "sync:jobs")
 
-	// initialize plaid
 	plaidClient := plaid.NewAdapter(cfg.PlaidClientID, cfg.PlaidSecret, cfg.PlaidEnv)
 
-	// initialize repositories
 	itemRepo := postgres.NewItemRepo(db)
 	txRepo := postgres.NewTransactionRepo(db)
 
-	// initialize service
+	// prod rate limits for /transactions/sync
+	// 2500 req/min per client, 50 req/min per item
+	globalLimiter := redis.NewRateLimiter(redisClient, 2500, 1*time.Minute)
+	itemLimiter := redis.NewRateLimiter(redisClient, 50, 1*time.Minute)
+
 	syncer := service.NewSyncer(
 		itemRepo,
 		txRepo,
 		plaidClient,
 		lockAdapter,
 		queueAdapter,
+		globalLimiter,
+		itemLimiter,
 	)
 
 	// start worker loop
