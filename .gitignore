@@ -39,8 +39,8 @@ vendor/
 dist/
 build/
 
-api
-worker
+/api
+/worker
 
 docker-compose.dev.yml
 Makefile
