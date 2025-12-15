@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	Env      string
-	LogLevel string
+	Env        string
+	LogLevel   string
+	ServerPort string
 
 	DatabaseURL string
 
@@ -27,8 +28,9 @@ type Config struct {
 
 func Load() (*Config, error) {
 	cfg := &Config{
-		Env:      getEnv("APP_ENV", "development"),
-		LogLevel: getEnv("LOG_LEVEL", "info"),
+		Env:        getEnv("APP_ENV", "development"),
+		LogLevel:   getEnv("LOG_LEVEL", "info"),
+		ServerPort: getEnv("PORT", "8080"),
 
 		DatabaseURL: getEnv("DATABASE_URL", ""),
 
