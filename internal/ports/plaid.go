@@ -6,6 +6,8 @@ import (
 	"github.com/alexchny/sync-relay/internal/domain"
 )
 
+var ErrCursorReset = errors.New("plaid cursor reset required")
+
 type SyncResponse struct {
 	Added 		[]*domain.Transaction
 	Modified	[]*domain.Transaction
