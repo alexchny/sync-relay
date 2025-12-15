@@ -14,12 +14,12 @@ var ErrUserActionRequired = errors.New("user action required")
 var ErrInvalidToken = errors.New("invalid or expired access token")
 
 type SyncResponse struct {
-	Added 		[]*domain.Transaction
-	Modified	[]*domain.Transaction
-	Removed 	[]string
+	Added    []*domain.Transaction
+	Modified []*domain.Transaction
+	Removed  []string
 
-	NextCursor 	string
-	HasMore		bool
+	NextCursor string
+	HasMore    bool
 }
 
 type TokenExchangeResponse struct {

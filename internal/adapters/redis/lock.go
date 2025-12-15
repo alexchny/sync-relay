@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 )
 
 var ErrLockBusy = errors.New("lock is already acquired")

@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/alexchny/sync-relay/internal/domain"
 	"github.com/alexchny/sync-relay/internal/ports"
+	"github.com/google/uuid"
 )
 
 type Syncer struct {
 	itemRepo ports.ItemRepository
-	txRepo ports.TransactionRepository
-	plaid ports.PlaidClient
-	lock ports.DistributedLock
-	events ports.EventPublisher
+	txRepo   ports.TransactionRepository
+	plaid    ports.PlaidClient
+	lock     ports.DistributedLock
+	events   ports.EventPublisher
 }
 
 func NewSyncer(
@@ -27,10 +27,10 @@ func NewSyncer(
 ) *Syncer {
 	return &Syncer{
 		itemRepo: itemRepo,
-		txRepo: txRepo,
-		plaid: plaid,
-		lock: lock,
-		events: events,
+		txRepo:   txRepo,
+		plaid:    plaid,
+		lock:     lock,
+		events:   events,
 	}
 }
 
@@ -42,7 +42,11 @@ func (s *Syncer) SyncItem(ctx context.Context, itemID uuid.UUID) error {
 		return fmt.Errorf("failed to acquire lock for item %s: %w", itemID, err)
 	}
 
-	defer release()
+	defer func() {
+		if err := release(); err != nil {
+			_ = err
+		}
+	}()
 
 	// load item
 	item, err := s.itemRepo.GetByID(ctx, itemID)

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/alexchny/sync-relay/internal/domain"
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
@@ -30,10 +30,10 @@ func (r *TransactionRepo) UpsertBatch(ctx context.Context, txs []*domain.Transac
 
 	for i, tx := range txs {
 		base := i * paramsPerTx
-		
+
 		row := fmt.Sprintf(
 			"(gen_random_uuid(), $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, NOW(), NOW())",
-			base+1, base+2, base+3, base+4, base+5, 
+			base+1, base+2, base+3, base+4, base+5,
 			base+6, base+7, base+8, base+9,
 		)
 		placeholders = append(placeholders, row)
@@ -97,7 +97,7 @@ func (r *TransactionRepo) MarkRemovedBatch(ctx context.Context, itemID uuid.UUID
 		SET is_removed = TRUE, updated_at = NOW()
 		WHERE item_id = $1 AND plaid_transaction_id = ANY($2)
 	`
-	
+
 	if _, err := r.db.ExecContext(ctx, query, itemID, pq.Array(plaidTxIDs)); err != nil {
 		return fmt.Errorf("failed to mark removed: %w", err)
 	}

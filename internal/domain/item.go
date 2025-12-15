@@ -9,24 +9,24 @@ import (
 type SyncStatus string
 
 const (
-	SyncStatusActive SyncStatus = "active"
-	SyncStatusError SyncStatus = "error"
+	SyncStatusActive    SyncStatus = "active"
+	SyncStatusError     SyncStatus = "error"
 	SyncStatusReSyncing SyncStatus = "resyncing"
 )
 
 type Item struct {
-	ID            	uuid.UUID
-	TenantID      	uuid.UUID
-	PlaidItemID   	string
-	AccessTokenEnc	string
+	ID             uuid.UUID
+	TenantID       uuid.UUID
+	PlaidItemID    string
+	AccessTokenEnc string
 
-	NextCursor    	string
-	SyncStatus		SyncStatus
-	LastSyncedAt  	*time.Time
-	ErrorMessage  	string
+	NextCursor   string
+	SyncStatus   SyncStatus
+	LastSyncedAt *time.Time
+	ErrorMessage string
 
-	CreatedAt     	time.Time
-	UpdatedAt     	time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (i *Item) CanSync() bool {

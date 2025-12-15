@@ -13,9 +13,9 @@ type Client struct {
 
 func NewClient(addr string, password string, db int) (*Client, error) {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:		addr,
-		Password:	password,
-		DB:			db,
+		Addr:     addr,
+		Password: password,
+		DB:       db,
 	})
 
 	if err := rdb.Ping(context.Background()).Err(); err != nil {

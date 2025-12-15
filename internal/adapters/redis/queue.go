@@ -9,14 +9,14 @@ import (
 )
 
 type QueueAdapter struct {
-	client 		*Client
-	queueName	string
+	client    *Client
+	queueName string
 }
 
 func NewQueueAdapter(client *Client, queueName string) *QueueAdapter {
 	return &QueueAdapter{
-		client:		client,
-		queueName:	queueName,
+		client:    client,
+		queueName: queueName,
 	}
 }
 
@@ -25,8 +25,6 @@ type jobDTO struct {
 	JobType string `json:"job_type"`
 	TraceID string `json:"trace_id"`
 }
-
-const queueKey = "sync_jobs"
 
 func (q *QueueAdapter) Enqueue(ctx context.Context, job domain.SyncJob) error {
 	// map domain to DTO

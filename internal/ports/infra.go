@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/alexchny/sync-relay/internal/domain"
+	"github.com/google/uuid"
 )
 
 type DistributedLock interface {

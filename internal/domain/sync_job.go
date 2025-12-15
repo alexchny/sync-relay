@@ -7,12 +7,12 @@ import (
 type SyncJobType string
 
 const (
-	JobTypeStandard SyncJobType = "standard"
+	JobTypeStandard       SyncJobType = "standard"
 	JobTypeReconciliation SyncJobType = "reconciliation"
 )
 
 type SyncJob struct {
-	ItemID 	uuid.UUID
+	ItemID  uuid.UUID
 	JobType SyncJobType
 	TraceID string
 }

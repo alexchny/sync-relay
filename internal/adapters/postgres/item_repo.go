@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/alexchny/sync-relay/internal/domain"
+	"github.com/google/uuid"
 )
 
 type ItemRepo struct {
@@ -131,7 +131,7 @@ func (r *ItemRepo) MarkError(ctx context.Context, id uuid.UUID, syncErr error) e
 	} else {
 		errText = "unknown error"
 	}
-	
+
 	query := `
 		UPDATE items 
 		SET sync_status = 'error', 

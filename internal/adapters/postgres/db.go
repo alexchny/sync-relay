@@ -1,8 +1,10 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib" // Register pgx driver
 )
@@ -17,7 +19,10 @@ func NewDB(databaseURL string) (*DB, error) {
 		return nil, fmt.Errorf("failed to open db: %w", err)
 	}
 
-	if err := db.Ping(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to ping db: %w", err)
 	}

@@ -10,26 +10,26 @@ type TransactionStatus string
 
 const (
 	TransactionStatusPending TransactionStatus = "pending"
-	TransactionStatusPosted TransactionStatus = "posted"
+	TransactionStatusPosted  TransactionStatus = "posted"
 )
 
 type Transaction struct {
-	ID					uuid.UUID
-	ItemID				uuid.UUID
-	PlaidTransactionID	string
-	PlaidPendingID 		*string
+	ID                 uuid.UUID
+	ItemID             uuid.UUID
+	PlaidTransactionID string
+	PlaidPendingID     *string
 
-	AmountCents			int64
-	CurrencyCode		string
-	Date				time.Time
-	MerchantName		string
-	Status				TransactionStatus
+	AmountCents  int64
+	CurrencyCode string
+	Date         time.Time
+	MerchantName string
+	Status       TransactionStatus
 
-	IsRemoved			bool
-	RawPayload			[]byte
+	IsRemoved  bool
+	RawPayload []byte
 
-	CreatedAt			time.Time
-	UpdatedAt			time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (t *Transaction) IsPosted() bool {
