@@ -104,3 +104,13 @@ func (r *TransactionRepo) MarkRemovedBatch(ctx context.Context, itemID uuid.UUID
 
 	return nil
 }
+
+func (r *TransactionRepo) DeleteAllForItem(ctx context.Context, itemID uuid.UUID) error {
+	query := `DELETE FROM transactions WHERE item_id = $1`
+
+	if _, err := r.db.ExecContext(ctx, query, itemID); err != nil {
+		return fmt.Errorf("failed to delete all transactions for item %s: %w", itemID, err)
+	}
+
+	return nil
+}
