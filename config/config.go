@@ -3,95 +3,108 @@ package config
 import (
 	"fmt"
 	"os"
-
-	"github.com/kelseyhightower/envconfig"
-)
-
-type ServerMode string
-
-const (
-	ServerModeAPI    ServerMode = "api"
-	ServerModeWorker ServerMode = "worker"
-	ServerModeBoth   ServerMode = "both"
-)
-
-type PlaidEnv string
-
-const (
-	PlaidEnvSandbox     PlaidEnv = "sandbox"
-	PlaidEnvDevelopment PlaidEnv = "development"
-	PlaidEnvProduction  PlaidEnv = "production"
-)
-
-type LogLevel string
-
-const (
-	LogLevelDebug LogLevel = "debug"
-	LogLevelInfo  LogLevel = "info"
-	LogLevelWarn  LogLevel = "warn"
-	LogLevelError LogLevel = "error"
+	"strconv"
+	"time"
 )
 
 type Config struct {
-	ServerPort int        `envconfig:"SERVER_PORT" default:"8080"`
-	ServerMode ServerMode `envconfig:"SERVER_MODE" default:"both"`
+	Env      string
+	LogLevel string
 
-	PostgresDSN string `envconfig:"POSTGRES_DSN" required:"true"`
+	DatabaseURL string
 
-	RedisAddr     string `envconfig:"REDIS_ADDR" required:"true"`
-	RedisPassword string `envconfig:"REDIS_PASSWORD" default:""`
-	RedisDB       int    `envconfig:"REDIS_DB" default:"0"`
+	RedisAddr     string
+	RedisPassword string
+	RedisDB       int
 
-	KafkaBrokers []string `envconfig:"KAFKA_BROKERS" required:"true"`
-	KafkaTopic   string   `envconfig:"KAFKA_TOPIC" default:"sync-relay.transactions.v1"`
+	PlaidClientID string
+	PlaidSecret   string
+	PlaidEnv      string
 
-	PlaidClientID      string   `envconfig:"PLAID_CLIENT_ID" required:"true"`
-	PlaidSecret        string   `envconfig:"PLAID_SECRET" required:"true"`
-	PlaidEnv           PlaidEnv `envconfig:"PLAID_ENV" default:"sandbox"`
-	PlaidWebhookSecret string   `envconfig:"PLAID_WEBHOOK_SECRET" required:"true"`
-
-	EncryptionKey string `envconfig:"ENCRYPTION_KEY" required:"true"`
-
-	WorkerConcurrency int `envconfig:"WORKER_CONCURRENCY" default:"10"`
-	LockTTLSeconds    int `envconfig:"LOCK_TTL_SECONDS" default:"60"`
-
-	LogLevel LogLevel `envconfig:"LOG_LEVEL" default:"info"`
+	WorkerConcurrency int
+	LockTTL           time.Duration
 }
 
 func Load() (*Config, error) {
-	var cfg Config
-	if err := envconfig.Process("", &cfg); err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
+	cfg := &Config{
+		Env:      getEnv("APP_ENV", "development"),
+		LogLevel: getEnv("LOG_LEVEL", "info"),
+
+		DatabaseURL: getEnv("DATABASE_URL", ""),
+
+		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
+		RedisPassword: getEnv("REDIS_PASSWORD", ""),
+		RedisDB:       getEnvInt("REDIS_DB", 0),
+
+		PlaidClientID: getEnv("PLAID_CLIENT_ID", ""),
+		PlaidSecret:   getEnv("PLAID_SECRET", ""),
+		PlaidEnv:      getEnv("PLAID_ENV", "sandbox"),
+
+		WorkerConcurrency: getEnvInt("WORKER_CONCURRENCY", 5),
+		LockTTL:           getEnvDuration("LOCK_TTL", 2*time.Minute),
 	}
 
 	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("config validation failed: %w", err)
+		return nil, err
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
 
 func (c *Config) Validate() error {
-	if c.ServerMode != ServerModeAPI && c.ServerMode != ServerModeWorker && c.ServerMode != ServerModeBoth {
-		return fmt.Errorf("invalid SERVER_MODE: %s (must be api, worker, or both)", c.ServerMode)
+	if c.DatabaseURL == "" {
+		return fmt.Errorf("DATABASE_URL is required")
+	}
+	if c.PlaidClientID == "" {
+		return fmt.Errorf("PLAID_CLIENT_ID is required")
+	}
+	if c.PlaidSecret == "" {
+		return fmt.Errorf("PLAID_SECRET is required")
 	}
 
-	if c.PlaidEnv != PlaidEnvSandbox && c.PlaidEnv != PlaidEnvDevelopment && c.PlaidEnv != PlaidEnvProduction {
-		return fmt.Errorf("invalid PLAID_ENV: %s", c.PlaidEnv)
+	validPlaidEnvs := map[string]bool{
+		"sandbox":     true,
+		"development": true,
+		"production":  true,
+	}
+	if !validPlaidEnvs[c.PlaidEnv] {
+		return fmt.Errorf("invalid PLAID_ENV: %s (must be sandbox, development, or production)", c.PlaidEnv)
 	}
 
-	if len(c.EncryptionKey) != 64 {
-		return fmt.Errorf("ENCRYPTION_KEY must be 64 hex characters (32 bytes)")
+	if c.WorkerConcurrency < 1 {
+		return fmt.Errorf("WORKER_CONCURRENCY must be at least 1")
 	}
 
 	return nil
 }
 
-func LoadOrPanic() *Config {
-	cfg, err := Load()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
-		os.Exit(1)
+func getEnv(key, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
 	}
-	return cfg
+	return fallback
+}
+
+func getEnvInt(key string, fallback int) int {
+	valStr, exists := os.LookupEnv(key)
+	if !exists {
+		return fallback
+	}
+	val, err := strconv.Atoi(valStr)
+	if err != nil {
+		panic(fmt.Sprintf("env var %s must be an integer, got: %s", key, valStr))
+	}
+	return val
+}
+
+func getEnvDuration(key string, fallback time.Duration) time.Duration {
+	valStr, exists := os.LookupEnv(key)
+	if !exists {
+		return fallback
+	}
+	val, err := time.ParseDuration(valStr)
+	if err != nil {
+		panic(fmt.Sprintf("env var %s must be a valid duration (e.g. 10s, 2m), got: %s", key, valStr))
+	}
+	return val
 }
