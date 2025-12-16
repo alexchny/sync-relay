@@ -2,10 +2,13 @@ package ports
 
 import (
 	"context"
+	"errors"
 
 	"github.com/alexchny/sync-relay/internal/domain"
 	"github.com/google/uuid"
 )
+
+var ErrItemAlreadyExists = errors.New("item already exists")
 
 type ItemRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Item, error)

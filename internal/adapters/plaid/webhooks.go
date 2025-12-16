@@ -6,19 +6,11 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/alexchny/sync-relay/internal/ports"
 )
 
-type WebhookPayload struct {
-	WebhookType string `json:"webhook_type"`
-	WebhookCode string `json:"webhook_code"`
-	ItemID      string `json:"item_id"`
-	Error       *struct {
-		ErrorMessage string `json:"error_message"`
-		ErrorCode    string `json:"error_code"`
-	} `json:"error,omitempty"`
-}
-
-func (a *Adapter) VerifyWebhook(ctx context.Context, req *http.Request) (*WebhookPayload, error) {
+func (a *Adapter) VerifyWebhook(ctx context.Context, req *http.Request) (*ports.WebhookPayload, error) {
 	// method validation
 	if req.Method != http.MethodPost {
 		return nil, fmt.Errorf("invalid method: %s", req.Method)
@@ -42,7 +34,7 @@ func (a *Adapter) VerifyWebhook(ctx context.Context, req *http.Request) (*Webhoo
 	req.Body = http.MaxBytesReader(nil, req.Body, 1048576)
 
 	// parse body
-	var payload WebhookPayload
+	var payload ports.WebhookPayload
 	if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
 		return nil, fmt.Errorf("failed to decode webhook body: %w", err)
 	}

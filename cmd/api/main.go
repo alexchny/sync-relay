@@ -14,9 +14,9 @@ import (
 	"github.com/alexchny/sync-relay/internal/adapters/plaid"
 	"github.com/alexchny/sync-relay/internal/adapters/postgres"
 	"github.com/alexchny/sync-relay/internal/adapters/redis"
+	"github.com/alexchny/sync-relay/internal/api/handlers"
 	"github.com/alexchny/sync-relay/internal/config"
-	"github.com/alexchny/sync-relay/internal/domain"
-	"github.com/google/uuid"
+	"github.com/alexchny/sync-relay/internal/service"
 )
 
 func main() {
@@ -68,6 +68,13 @@ func main() {
 	queueAdapter := redis.NewQueueAdapter(redisClient, "sync:jobs")
 	plaidAdapter := plaid.NewAdapter(cfg.PlaidClientID, cfg.PlaidSecret, cfg.PlaidEnv)
 
+	// create services
+	accountService := service.NewAccountService(plaidAdapter, itemRepo, queueAdapter)
+
+	// create handlers
+	accountHandler := handlers.NewAccountHandler(accountService)
+	webhookHandler := handlers.NewWebhookHandler(plaidAdapter, itemRepo, queueAdapter)
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -75,52 +82,12 @@ func main() {
 		_, _ = w.Write([]byte("OK"))
 	})
 
-	// plaid webhook handler
-	mux.HandleFunc("/webhooks/plaid", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	// account onboarding routes
+	mux.HandleFunc("/api/link/token", accountHandler.CreateLinkToken)
+	mux.HandleFunc("/api/items", accountHandler.ConnectItem)
 
-		// verify webhook
-		payload, err := plaidAdapter.VerifyWebhook(r.Context(), r)
-		if err != nil {
-			slog.Warn("invalid webhook attempt", "error", err, "ip", r.RemoteAddr)
-			http.Error(w, "Invalid request", http.StatusBadRequest)
-			return
-		}
-
-		// filter for "SYNC_UPDATES_AVAILABLE"
-		if payload.WebhookType != "TRANSACTIONS" || payload.WebhookCode != "SYNC_UPDATES_AVAILABLE" {
-			slog.Debug("ignoring webhook", "type", payload.WebhookType, "code", payload.WebhookCode)
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		// get item
-		item, err := itemRepo.GetByPlaidItemID(r.Context(), payload.ItemID)
-		if err != nil {
-			slog.Error("unknown item in webhook", "plaid_item_id", payload.ItemID, "error", err)
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		// enqueue sync job
-		job := &domain.SyncJob{
-			ItemID:  item.ID,
-			JobType: domain.JobTypeStandard,
-			TraceID: uuid.NewString(),
-		}
-
-		if err := queueAdapter.Enqueue(r.Context(), job); err != nil {
-			slog.Error("failed to enqueue sync job", "item_id", item.ID, "error", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		slog.Info("sync job enqueued", "item_id", item.ID)
-		w.WriteHeader(http.StatusAccepted)
-	})
+	// webhook routes
+	mux.HandleFunc("/webhooks/plaid", webhookHandler.HandlePlaidWebhook)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.ServerPort),

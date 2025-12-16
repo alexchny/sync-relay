@@ -7,7 +7,9 @@ import (
 	"fmt"
 
 	"github.com/alexchny/sync-relay/internal/domain"
+	"github.com/alexchny/sync-relay/internal/ports"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type ItemRepo struct {
@@ -94,6 +96,10 @@ func (r *ItemRepo) Create(ctx context.Context, item *domain.Item) error {
 		item.NextCursor,
 	)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ports.ErrItemAlreadyExists
+		}
 		return fmt.Errorf("failed to create item: %w", err)
 	}
 	return nil
