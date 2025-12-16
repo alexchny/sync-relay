@@ -7,5 +7,5 @@ import (
 )
 
 type JobQueue interface {
-	Enqueue(ctx context.Context, job domain.SyncJob) error
+	Enqueue(ctx context.Context, job *domain.SyncJob) error
 }
